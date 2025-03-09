@@ -1,0 +1,271 @@
+Platform
+
+# Read Replicas
+
+## Deploy read-only databases across multiple regions, for lower latency and better resource management.
+
+* * *
+
+Read Replicas are additional databases that are kept in sync with your Primary database. You can read your data from a Read Replica, which helps with:
+
+- **Load balancing:** Read Replicas reduce load on the Primary database. For example, you can use a Read Replica for complex analytical queries and reserve the Primary for user-facing create, update, and delete operations.
+- **Improved latency:** For projects with a global user base, additional databases can be deployed closer to users to reduce latency.
+- **Redundancy:** Read Replicas provide data redundancy.
+
+![Map view of all project databases.](https://supabase.com/docs/_next/image?url=%2Fdocs%2Fimg%2Fguides%2Fplatform%2Fread-replicas%2Fmap-view.png%3Fv%3D1&w=3840&q=75&dpl=dpl_9xAnUGkSbk4dufV62sNRezafXykJ)
+
+## About Read Replicas [\#](https://supabase.com/docs/guides/platform/read-replicas\#about-read-replicas)
+
+The database you start with when launching a Supabase project is your Primary database. Read Replicas are kept in sync with the Primary through a process called "replication." Replication is asynchronous to ensure that transactions on the Primary aren't blocked. There is a delay between an update on the Primary and the time that a Read Replica receives the change. This delay is called "replication lag."
+
+You can only read data from a Read Replica. This is in contrast to a Primary database, where you can both read and write:
+
+|  | select | insert | update | delete |
+| --- | --- | --- | --- | --- |
+| Primary | ✅ | ✅ | ✅ | ✅ |
+| Read Replica | ✅ | - | - | - |
+
+## Prerequisites [\#](https://supabase.com/docs/guides/platform/read-replicas\#prerequisites)
+
+Read Replicas are available for all projects on the Pro, Team and Enterprise plans. Spin one up now over at the [Infrastructure Settings page](https://supabase.com/dashboard/project/_/settings/infrastructure).
+
+Projects must meet these requirements to use Read Replicas:
+
+1. Running on AWS.
+   - Support for projects on Fly.io is coming.
+2. Running on at least a [Small compute add-on](https://supabase.com/docs/guides/platform/compute-add-ons).
+   - Read Replicas are started on the same compute instance as the Primary to keep up with changes.
+3. Running on Postgres 15+.
+   - For projects running on older versions of Postgres, you will need to [upgrade to the latest platform version](https://supabase.com/docs/guides/platform/migrating-and-upgrading-projects#pgupgrade).
+4. Using [physical backups](https://supabase.com/docs/guides/platform/backups#point-in-time-recovery)
+   - Physical backups are automatically enabled if using [PITR](https://supabase.com/docs/guides/platform/backups#point-in-time-recovery)
+   - If you're not using PITR, you'll be able to switch to physical backups as part of the Read Replica setup process. Note that physical backups can't be downloaded from the dashboard in the way logical backups can.
+
+## Getting started [\#](https://supabase.com/docs/guides/platform/read-replicas\#getting-started)
+
+To add a Read Replica, go to the [Infrastructure Settings page](https://supabase.com/dashboard/project/_/settings/infrastructure) in your dashboard.
+
+Projects on an XL compute add-on or larger can create up to five Read Replicas. Projects on compute add-ons smaller than XL can create up to two Read Replicas. All Read Replicas inherit the compute size of their Primary database.
+
+### Deploying a Read Replica [\#](https://supabase.com/docs/guides/platform/read-replicas\#deploying-a-read-replica)
+
+A Read Replica is deployed by using a physical backup as a starting point, and a combination of WAL file archives and direct replication from the Primary database to catch up. Both components may take significant time to complete. The duration of restoring from a physical backup is roughly dependent and directly related to the database size of your project. The time taken to catch up to the primary using WAL archives and direct replication is dependent on the level of activity on the Primary database; a more active database will produce a larger number of WAL files that will need to be processed.
+
+Along with the progress of the deployment, the dashboard displays rough estimates for each component.
+
+### What does it mean when "Init failed" is observed? [\#](https://supabase.com/docs/guides/platform/read-replicas\#what-does-it-mean-when-init-failed-is-observed)
+
+The status `Init failed` indicates that the Read Replica has failed to deploy. Some possible scenarios as to why a Read Replica may have failed to be deployed:
+
+- Underlying instance failed to come up.
+- Network issue leading to inability to connect to the Primary database.
+- Possible incompatible database settings between the Primary and Read Replica databases.
+- Platform issues.
+
+It is safe to drop this failed Read Replica, and in the event of a transient issue, attempt to spin up another one. If however spinning up Read Replicas for your project consistently fails, do check out our [status page](https://status.supabase.com/) for any ongoing incidents, or open a support ticket [here](https://supabase.com/dashboard/support/new). To aid the investigation, do not bring down the recently failed Read Replica.
+
+## Features [\#](https://supabase.com/docs/guides/platform/read-replicas\#features)
+
+Read Replicas offer the following features:
+
+### Dedicated endpoints [\#](https://supabase.com/docs/guides/platform/read-replicas\#dedicated-endpoints)
+
+Each Read Replica has its own dedicated database and API endpoints.
+
+- Find the database endpoint on the [Database Settings page](https://supabase.com/dashboard/project/_/settings/database) under **Connection Info**
+- Find the API endpoint on the [API Settings page](https://supabase.com/dashboard/project/_/settings/api) under **Project URL**
+
+Read Replicas only support `GET` requests from the [REST API](https://supabase.com/docs/guides/api). If you are calling a read-only Postgres function through the REST API, make sure to set the `get: true` [option](https://supabase.com/docs/reference/javascript/rpc?queryGroups=example&example=call-a-read-only-postgres-function).
+
+Requests to other Supabase products, such as Auth, Storage, and Realtime, aren't able to use a Read Replica or its API endpoint. Support for more products will be added in the future.
+
+If you're using an [IPv4 add-on](https://supabase.com/docs/guides/platform/ipv4-address#read-replicas), the database endpoints for your Read Replicas will also use an IPv4 add-on.
+
+### Dedicated connection pool [\#](https://supabase.com/docs/guides/platform/read-replicas\#dedicated-connection-pool)
+
+A connection pool through Supavisor is also available for each Read Replica. Find the connection string on the [Database Settings page](https://supabase.com/dashboard/project/_/settings/database) under **Connection String**.
+
+### API load balancer [\#](https://supabase.com/docs/guides/platform/read-replicas\#api-load-balancer)
+
+A load balancer is deployed to automatically balance requests between your Primary database and Read Replicas. Find its endpoint on the [API Settings page](https://supabase.com/dashboard/project/_/settings/api).
+
+The load balancer uses a round-robin strategy to route `GET` requests to all available API endpoints, including the Primary database. This means that `GET` requests are randomly and evenly split among databases. Non- `GET` requests can also be sent through this endpoint, and will be routed to the Primary database.
+
+To call a read-only Postgres function on Read Replicas through the REST API, use the `get: true` [option](https://supabase.com/docs/reference/javascript/rpc?queryGroups=example&example=call-a-read-only-postgres-function).
+
+If you remove all Read Replicas from your project, the load balancer and its endpoint are removed as well. Make sure to redirect requests back to your Primary database before removal.
+
+#### Experimental routing [\#](https://supabase.com/docs/guides/platform/read-replicas\#experimental-routing)
+
+The API load balancer offers an experimental routing mode that builds on top of the existing functionality. It is now possible to use a load balancer endpoint for all Supabase services (Auth, Edge Functions, Realtime, and Storage) meaning there is no need to worry about which endpoint to use in which situations.
+
+Due to the requirements of the Auth service, all Auth requests are handled by the Primary, even when sent over the load balancer endpoint. This is similar to how non-Read requests for the Data API (PostgREST) are exclusively handled by the Primary.
+
+The experimental routing mode can be enabled by sending the header `sb-lb-routing-mode: alpha-all-services` along with requests. This gives the option to opt-in and try out the new routing, but still have the peace of mind that the original behavior is there should it be needed.
+
+What follows is an example of using the `supabase-js` library to create a new client with the appropriate headers and make an Auth request to create a new user.
+
+./create-user.ts
+
+`
+import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
+// Load environment variables from .env file
+dotenv.config()
+// Supabase credentials
+const supabaseUrl = process.env.SUPABASE_URL as string
+const supabaseKey = process.env.SUPABASE_KEY as string
+// Initialize the Supabase client with custom headers
+const supabase = createClient(supabaseUrl, supabaseKey, {
+global: {
+    headers: {
+      'sb-lb-routing-mode': 'alpha-all-services',
+    },
+},
+})
+/**
+* @description simple user creation function
+*/
+async function createUser() {
+// Make the Auth call to create a user
+const { data, error } = await supabase.auth.signUp({
+    email: 'valid.email@supabase.io',
+    password: 'my--really-strong-password',
+})
+// Throw on an error
+if (error) {
+    throw new Error(error.message)
+}
+// Output the response
+console.dir(data)
+}
+// Register a random user
+createUser()
+`
+
+The client creation function, with experimental routing header, can be used throughout an application to take advantage of load balancer experimental routing.
+
+If you use a [custom domain](https://supabase.com/docs/guides/platform/custom-domains), requests will not be routed through the load balancer. You should instead use the dedicated endpoints provided in the dashboard.
+
+### Querying through the SQL editor [\#](https://supabase.com/docs/guides/platform/read-replicas\#querying-through-the-sql-editor)
+
+In the SQL editor, you can choose if you want to run the query on a particular Read Replica.
+
+![SQL editor view.](https://supabase.com/docs/_next/image?url=%2Fdocs%2Fimg%2Fguides%2Fplatform%2Fread-replicas%2Fsql-editor.png%3Fv%3D1&w=3840&q=75&dpl=dpl_9xAnUGkSbk4dufV62sNRezafXykJ)
+
+### Logging [\#](https://supabase.com/docs/guides/platform/read-replicas\#logging)
+
+When a Read Replica is deployed, it emits logs from the following services:
+
+- [API](https://supabase.com/dashboard/project/_/logs/edge-logs)
+- [Postgres](https://supabase.com/dashboard/project/_/logs/postgres-logs)
+- [PostgREST](https://supabase.com/dashboard/project/_/logs/postgrest-logs)
+- [Supavisor](https://supabase.com/dashboard/project/_/logs/pooler-logs)
+
+Views on [Log Explorer](https://supabase.com/docs/guides/platform/logs) are automatically filtered by databases, with the logs of the Primary database displayed by default. Viewing logs from other databases can be toggled with the `Source` button found on the upper-right part section of the Logs Explorer page.
+
+For API logs, logs can originate from the API Load Balancer as well. The upstream database or the one that eventually handles the request can be found under the `Redirect Identifier` field. This is equivalent to `metadata.load_balancer_redirect_identifier` when querying the underlying logs.
+
+### Metrics [\#](https://supabase.com/docs/guides/platform/read-replicas\#metrics)
+
+Observability and metrics for Read Replicas are available on the Supabase Dashboard. Resource utilization for a specific Read Replica can be viewed on the [Database Reports page](https://supabase.com/dashboard/project/_/reports/database) by toggling for `Source`. Likewise, metrics on API requests going through either a Read Replica or Load Balancer API endpoint are also available on the dashboard through the [API Reports page](https://supabase.com/dashboard/project/_/reports/api-overview)
+
+We recommend ingesting your [project's metrics](https://supabase.com/docs/guides/platform/metrics#accessing-the-metrics-endpoint) into your own environment. If you have an existing ingestion pipeline set up for your project, you can [update it](https://github.com/supabase/supabase-grafana?tab=readme-ov-file#read-replica-support) to additionally ingest metrics from your Read Replicas.
+
+### Centralized configuration management [\#](https://supabase.com/docs/guides/platform/read-replicas\#centralized-configuration-management)
+
+All settings configured through the dashboard will be propagated across all databases of a project. This ensures that no Read Replica get out of sync with the Primary database or with other Read Replicas.
+
+## Operations blocked by Read Replicas [\#](https://supabase.com/docs/guides/platform/read-replicas\#operations-blocked-by-read-replicas)
+
+### Project upgrades and data restorations [\#](https://supabase.com/docs/guides/platform/read-replicas\#project-upgrades-and-data-restorations)
+
+The following procedures require all Read Replicas for a project to be brought down before they can be performed:
+
+1. [Project upgrades](https://supabase.com/docs/guides/platform/migrating-and-upgrading-projects#pgupgrade)
+2. [Data restorations](https://supabase.com/docs/guides/platform/backups#pitr-restoration-process)
+
+These operations need to be completed before Read Replicas can be re-deployed.
+
+## About replication [\#](https://supabase.com/docs/guides/platform/read-replicas\#about-replication)
+
+We use a hybrid approach to replicate data from a Primary to its Read Replicas, combining the native methods of streaming replication and file-based log shipping.
+
+### Streaming replication [\#](https://supabase.com/docs/guides/platform/read-replicas\#streaming-replication)
+
+Postgres generates a Write Ahead Log (WAL) as database changes occur. With streaming replication, these changes stream from the Primary to the Read Replica server. The WAL alone is sufficient to reconstruct the database to its current state.
+
+This replication method is fast, since changes are streamed directly from the Primary to the Read Replica. On the other hand, it faces challenges when the Read Replica can't keep up with the WAL changes from its Primary. This can happen when the Read Replica is too small, running on degraded hardware, or has a heavier workload running.
+
+To address this, Postgres does provide tunable configuration, like `wal_keep_size`, to adjust the WAL retained by the Primary. If the Read Replica fails to “catch up” before the WAL surpasses the `wal_keep_size` setting, the replication is terminated. Tuning is a bit of an art - the amount of WAL required is variable for every situation.
+
+### File-based log shipping [\#](https://supabase.com/docs/guides/platform/read-replicas\#file-based-log-shipping)
+
+In this replication method, the Primary continuously buffers WAL changes to a local file and then sends the file to the Read Replica. If multiple Read Replicas are present, files could also be sent to an intermediary location accessible by all. The Read Replica then reads the WAL files and applies those changes. There is higher replication lag than streaming replication since the Primary buffers the changes locally first. It also means there is a small chance that WAL changes do not reach Read Replicas if the Primary goes down before the file is transferred. In these cases, if the Primary fails a Replica using streaming replication would (in most cases) be more up-to-date than a Replica using file-based log shipping.
+
+### File-based log shipping 🤝 streaming replication [\#](https://supabase.com/docs/guides/platform/read-replicas\#file-based-log-shipping--streaming-replication)
+
+![Map view of Primary and Read Replica databases](https://supabase.com/docs/_next/image?url=%2Fdocs%2Fimg%2Fguides%2Fplatform%2Fread-replicas%2Fstreaming-replication-dark.png%3Fv%3D1&w=3840&q=75&dpl=dpl_9xAnUGkSbk4dufV62sNRezafXykJ)
+
+Map view of Primary and Read Replica databases
+
+We bring these two methods together to achieve quick, stable, and reliable replication. Each method addresses the limitations of the other. Streaming replication minimizes replication lag, while file-based log shipping provides a fallback. For file-based log shipping, we use our existing Point In Time Recovery (PITR) infrastructure. We regularly archive files from the Primary using [WAL-G](https://github.com/wal-g/wal-g), an open source archival and restoration tool, and ship the WAL files to S3.
+
+We combine it with streaming replication to reduce replication lag. Once WAL-G files have been synced from S3, Read Replicas connect to the Primary and stream the WAL directly.
+
+### Monitoring replication lag [\#](https://supabase.com/docs/guides/platform/read-replicas\#monitoring-replication-lag)
+
+Replication lag for a specific Read Replica can be monitored through the dashboard. On the [Database Reports page](https://supabase.com/dashboard/project/_/reports/database) Read Replicas will have an additional chart under `Replica Information` displaying historical replication lag in seconds. Realtime replication lag in seconds can be observed on the [Infrastructure Settings page](https://supabase.com/dashboard/project/_/settings/infrastructure). This is the value on top of the Read Replica. Do note that there is no single threshold to indicate when replication lag should be addressed. It would be fully dependent on the requirements of your project.
+
+If you are already ingesting your [project's metrics](https://supabase.com/docs/guides/platform/metrics#accessing-the-metrics-endpoint) into your own environment, you can also keep track of replication lag and set alarms accordingly with the metric: `physical_replication_lag_physical_replica_lag_seconds`.
+
+Some common sources of high replication lag include:
+
+1. Exclusive locks on tables on the Primary.
+Operations such as `drop table`, `reindex` (amongst others) take an Access Exclusive lock on the table. This can result in increasing replication lag for the duration of the lock.
+2. Resource Constraints on the database
+Heavy utilization on the primary or the replica, if run on an under-resourced project, can result in high replication lag. This includes the characteristics of the disk being utilized (IOPS, Throughput).
+3. Long-running transactions on the Primary.
+Transactions that run for a long-time on the primary can also result in high replication lag. You can use the `pg_stat_activity` view to identify and terminate such transactions if needed. `pg_stat_activity` is a live view, and does not offer historical data on transactions that might have been active for a long time in the past.
+
+High replication lag can result in stale data being returned for queries being executed against the affected read replicas.
+
+You can [consult](https://cloud.google.com/sql/docs/postgres/replication/replication-lag) [additional](https://repost.aws/knowledge-center/rds-postgresql-replication-lag) [resources](https://severalnines.com/blog/what-look-if-your-postgresql-replication-lagging/) on the subject as well.
+
+## Misc [\#](https://supabase.com/docs/guides/platform/read-replicas\#misc)
+
+### Restart or compute add-on change behaviour [\#](https://supabase.com/docs/guides/platform/read-replicas\#restart-or-compute-add-on-change-behaviour)
+
+When a project that utilizes Read Replicas is restarted, or the compute add-on size is changed, the Primary database gets restarted first. During this period, the Read Replicas remain available.
+
+Once the Primary database has completed restarting (or resizing, in case of a compute add-on change) and become available for usage, all the Read Replicas are restarted (and resized, if needed) concurrently.
+
+## Pricing [\#](https://supabase.com/docs/guides/platform/read-replicas\#pricing)
+
+For a detailed breakdown of how charges are calculated, refer to [Manage Read Replica usage](https://supabase.com/docs/guides/platform/manage-your-usage/read-replicas).
+
+### Is this helpful?
+
+NoYes
+
+### On this page
+
+[About Read Replicas](https://supabase.com/docs/guides/platform/read-replicas#about-read-replicas) [Prerequisites](https://supabase.com/docs/guides/platform/read-replicas#prerequisites) [Getting started](https://supabase.com/docs/guides/platform/read-replicas#getting-started) [Deploying a Read Replica](https://supabase.com/docs/guides/platform/read-replicas#deploying-a-read-replica) [What does it mean when "Init failed" is observed?](https://supabase.com/docs/guides/platform/read-replicas#what-does-it-mean-when-init-failed-is-observed) [Features](https://supabase.com/docs/guides/platform/read-replicas#features) [Dedicated endpoints](https://supabase.com/docs/guides/platform/read-replicas#dedicated-endpoints) [Dedicated connection pool](https://supabase.com/docs/guides/platform/read-replicas#dedicated-connection-pool) [API load balancer](https://supabase.com/docs/guides/platform/read-replicas#api-load-balancer) [Querying through the SQL editor](https://supabase.com/docs/guides/platform/read-replicas#querying-through-the-sql-editor) [Logging](https://supabase.com/docs/guides/platform/read-replicas#logging) [Metrics](https://supabase.com/docs/guides/platform/read-replicas#metrics) [Centralized configuration management](https://supabase.com/docs/guides/platform/read-replicas#centralized-configuration-management) [Operations blocked by Read Replicas](https://supabase.com/docs/guides/platform/read-replicas#operations-blocked-by-read-replicas) [Project upgrades and data restorations](https://supabase.com/docs/guides/platform/read-replicas#project-upgrades-and-data-restorations) [About replication](https://supabase.com/docs/guides/platform/read-replicas#about-replication) [Streaming replication](https://supabase.com/docs/guides/platform/read-replicas#streaming-replication) [File-based log shipping](https://supabase.com/docs/guides/platform/read-replicas#file-based-log-shipping) [File-based log shipping 🤝 streaming replication](https://supabase.com/docs/guides/platform/read-replicas#file-based-log-shipping--streaming-replication) [Monitoring replication lag](https://supabase.com/docs/guides/platform/read-replicas#monitoring-replication-lag) [Misc](https://supabase.com/docs/guides/platform/read-replicas#misc) [Restart or compute add-on change behaviour](https://supabase.com/docs/guides/platform/read-replicas#restart-or-compute-add-on-change-behaviour) [Pricing](https://supabase.com/docs/guides/platform/read-replicas#pricing)
+
+![SQL editor view.](https://supabase.com/docs/_next/image?url=%2Fdocs%2Fimg%2Fguides%2Fplatform%2Fread-replicas%2Fsql-editor.png%3Fv%3D1&w=3840&q=75&dpl=dpl_9xAnUGkSbk4dufV62sNRezafXykJ)
+
+![Map view of all project databases.](https://supabase.com/docs/_next/image?url=%2Fdocs%2Fimg%2Fguides%2Fplatform%2Fread-replicas%2Fmap-view.png%3Fv%3D1&w=3840&q=75&dpl=dpl_9xAnUGkSbk4dufV62sNRezafXykJ)
+
+![Map view of Primary and Read Replica databases](https://supabase.com/docs/_next/image?url=%2Fdocs%2Fimg%2Fguides%2Fplatform%2Fread-replicas%2Fstreaming-replication-dark.png%3Fv%3D1&w=3840&q=75&dpl=dpl_9xAnUGkSbk4dufV62sNRezafXykJ)
+
+1. We use first-party cookies to improve our services. [Learn more](https://supabase.com/privacy#8-cookies-and-similar-technologies-used-on-our-european-services)
+
+
+
+   [Learn more](https://supabase.com/privacy#8-cookies-and-similar-technologies-used-on-our-european-services)•Privacy settings
+
+
+
+
+
+   AcceptOpt outPrivacy settings

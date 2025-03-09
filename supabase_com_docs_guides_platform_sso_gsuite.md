@@ -1,0 +1,109 @@
+Platform
+
+# Set Up SSO with Google Workspace
+
+* * *
+
+This feature is only available on the Team and Enterprise Plans. Contact [Sales](https://forms.supabase.com/enterprise) before doing these steps.
+
+Looking for docs on how to add Single Sign-On support in your Supabase project? Head on over to [Single Sign-On with SAML 2.0 for Projects](https://supabase.com/docs/guides/auth/enterprise-sso/auth-sso-saml).
+
+Supabase supports single sign-on (SSO) using Google Workspace (formerly known as G Suite).
+
+## Step 1: Open the Google Workspace web and mobile apps console [\#](https://supabase.com/docs/guides/platform/sso/gsuite\#google-workspace-console)
+
+![Google Workspace: Web and mobile apps admin console](https://supabase.com/docs/img/sso-gsuite-step-01.png)
+
+## Step 2: Choose to add custom SAML app [\#](https://supabase.com/docs/guides/platform/sso/gsuite\#add-custom-saml-app)
+
+From the _Add app_ button in the toolbar choose _Add custom SAML app_.
+
+![Google Workspace: Web and mobile apps admin console, Add custom SAML app selected](https://supabase.com/docs/img/sso-gsuite-step-02.png)
+
+## Step 3: Fill out app details [\#](https://supabase.com/docs/guides/platform/sso/gsuite\#add-app-details)
+
+The information you enter here is for visibility into your Google Workspace. You can choose any values you like. `Supabase` as a name works well for most use cases. Optionally enter a description.
+
+![Google Workspace: Web and mobile apps admin console, Add custom SAML, App details screen](https://supabase.com/docs/img/sso-gsuite-step-03.png)
+
+## Step 4: Download IdP metadata [\#](https://supabase.com/docs/guides/platform/sso/gsuite\#download-idp-metadata)
+
+This is a very important step. Click on _DOWNLOAD METADATA_ and save the file that was downloaded.
+
+![Google Workspace: Web and mobile apps admin console, Add custom SAML, Google Identity Provider details screen](https://supabase.com/docs/img/sso-gsuite-step-04.png)
+
+It's very important to send this file to your support contact at Supabase to complete the SSO setup process. If you're not sure where to send this file, you can always reach out to [Supabase Support](https://supabase.help/).
+
+**Important: Make sure the certificate as shown on screen has at least 1 year before it expires. Mark down this date in your calendar so you will be reminded that you need to update the certificate without any downtime for your users.**
+
+## Step 5: Add service provider details [\#](https://supabase.com/docs/guides/platform/sso/gsuite\#add-service-provider-details)
+
+Fill out these service provider details on the next screen.
+
+| Detail | Value |
+| --- | --- |
+| ACS URL | `https://alt.supabase.io/auth/v1/sso/saml/acs` |
+| Entity ID | `https://alt.supabase.io/auth/v1/sso/saml/metadata` |
+| Start URL | `https://supabase.com/dashboard` |
+| Name ID format | PERSISTENT |
+| Name ID | _Basic Information > Primary email_ |
+
+![Google Workspace: Web and mobile apps admin console, Add custom SAML, Service provider details screen](https://supabase.com/docs/img/sso-gsuite-step-05.png)
+
+## Step 6: Configure attribute mapping [\#](https://supabase.com/docs/guides/platform/sso/gsuite\#configure-attribute-mapping)
+
+Attribute mappings allow Supabase to get information about your Google Workspace users on each login.
+
+**A _Primary email_ to `email` mapping is required.** Other mappings shown below are optional and configurable depending on your Google Workspace setup. If in doubt, replicate the same config as shown.
+
+Share any changes, if any, from this screen with your Supabase support contact.
+
+![Google Workspace: Web and mobile apps admin console, Add custom SAML, Attribute mapping](https://supabase.com/docs/img/sso-gsuite-step-06.png)
+
+## Step 7: Wait for confirmation [\#](https://supabase.com/docs/guides/platform/sso/gsuite\#confirmation)
+
+Once you’ve configured the Google Workspace app as shown above, make sure you send the [metadata file you downloaded](https://supabase.com/docs/guides/platform/sso/gsuite#download-idp-metadata) and information regarding the [attribute mapping](https://supabase.com/docs/guides/platform/sso/gsuite#configure-attribute-mappings) (if any changes are applicable) to your support contact at Supabase.
+
+This information needs to be entered into Supabase before SSO is activated end-to-end.
+
+Wait for confirmation that this information has successfully been added to Supabase. It usually takes us 1 business day to configure this information for you.
+
+## Step 8: Configure user access [\#](https://supabase.com/docs/guides/platform/sso/gsuite\#configure-user-access)
+
+You can configure which Google Workspace user accounts will get access to Supabase. This is important if you wish to limit access to your software engineering teams.
+
+You can configure this access by clicking on the _User access_ card (or down-arrow). Follow the instructions on screen.
+
+Changes from this step sometimes take a while to propagate across Google’s systems. Wait at least 15 minutes before proceeding to the next step.
+
+![Google Workspace: Web and mobile apps admin console, Supabase app screen](https://supabase.com/docs/img/sso-gsuite-step-08.png)
+
+## Step 9: Test single sign-on [\#](https://supabase.com/docs/guides/platform/sso/gsuite\#testing)
+
+Once you’ve turned on access to Supabase for users in your organization, ask one of those users to help you out in testing the setup.
+
+It often helps to ask them to log out of their Google account and log back in.
+
+Ask them to enter their email address in the [Sign in with SSO](https://supabase.com/dashboard/sign-in-sso) page.
+
+If sign in is not working correctly, reach out to your support contact at Supabase.
+
+### Is this helpful?
+
+NoYes
+
+### On this page
+
+[Step 1: Open the Google Workspace web and mobile apps console](https://supabase.com/docs/guides/platform/sso/gsuite#google-workspace-console) [Step 2: Choose to add custom SAML app](https://supabase.com/docs/guides/platform/sso/gsuite#add-custom-saml-app) [Step 3: Fill out app details](https://supabase.com/docs/guides/platform/sso/gsuite#add-app-details) [Step 4: Download IdP metadata](https://supabase.com/docs/guides/platform/sso/gsuite#download-idp-metadata) [Step 5: Add service provider details](https://supabase.com/docs/guides/platform/sso/gsuite#add-service-provider-details) [Step 6: Configure attribute mapping](https://supabase.com/docs/guides/platform/sso/gsuite#configure-attribute-mapping) [Step 7: Wait for confirmation](https://supabase.com/docs/guides/platform/sso/gsuite#confirmation) [Step 8: Configure user access](https://supabase.com/docs/guides/platform/sso/gsuite#configure-user-access) [Step 9: Test single sign-on](https://supabase.com/docs/guides/platform/sso/gsuite#testing)
+
+1. We use first-party cookies to improve our services. [Learn more](https://supabase.com/privacy#8-cookies-and-similar-technologies-used-on-our-european-services)
+
+
+
+   [Learn more](https://supabase.com/privacy#8-cookies-and-similar-technologies-used-on-our-european-services)•Privacy settings
+
+
+
+
+
+   AcceptOpt outPrivacy settings
